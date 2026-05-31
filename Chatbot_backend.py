@@ -2,16 +2,18 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph,START,END
 from pydantic import BaseModel
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from typing import Optional,Annotated,TypedDict
 from langgraph.graph.message import add_messages
 from langchain_core.messages import HumanMessage, AIMessage,SystemMessage
+import sqlite3
 
 
 load_dotenv()
 
 model=ChatOpenAI()
-memory = InMemorySaver()
+conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
+checkpointer = SqliteSaver(conn)
 
 
 class BlogState(TypedDict):
@@ -21,7 +23,7 @@ graph=StateGraph(BlogState)
 
 def model_generation(state:BlogState):
     
-    query=state["messages"][-1]
+    query=state["messages"]
 
     system_prompt = """You are an extremely polite and explanatory agent.
 
@@ -38,14 +40,14 @@ def model_generation(state:BlogState):
                 You: "What a fantastic observation! You are absolutely right. Water feels wet because 
                 it has low viscosity and high surface tension, which allows it to spread across surfaces 
                 and cling to them, giving us that characteristic wet sensation. Isn't nature wonderful? 
-                Feel free to ask more anytime! 😊"
-                """
-    final_prompt=[SystemMessage(content=system_prompt),
-                  HumanMessage(content=query.content)]
+                Feel free to ask more anytime! "
+           """
+    print("STATE:",state)
+    final_prompt=[SystemMessage(content=system_prompt)]+ query
     result=model.invoke(final_prompt)
     return {"messages":[result]}
 
 graph.add_node("generation",model_generation)
 graph.add_edge(START,"generation")
 graph.add_edge("generation",END)
-workflow=graph.compile(checkpointer=memory)
+workflow=graph.compile(checkpointer=checkpointer)
