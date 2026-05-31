@@ -54,10 +54,18 @@ if user_input:
     with st.chat_message("User"):
         st.write(user_input)
 
-    with st.chat_message("Assistant"):
+    with st.chat_message("assistant"):
 
-        ai_response=workflow.invoke({"messages": [HumanMessage(user_input)]},config=conf)["messages"][-1]
-        
-        st.write(ai_response.content)
+        placeholder = st.empty()
+        full_response = ""
+
+        for token, metadata in workflow.stream(
+            {"messages": [HumanMessage(content=user_input)]},
+            config=conf,
+            stream_mode="messages"
+        ):
+            if token.content:
+                full_response += token.content
+                placeholder.write(full_response)
         
 

@@ -42,7 +42,6 @@ def model_generation(state:BlogState):
                 and cling to them, giving us that characteristic wet sensation. Isn't nature wonderful? 
                 Feel free to ask more anytime! "
            """
-    print("STATE:",state)
     final_prompt=[SystemMessage(content=system_prompt)]+ query
     result=model.invoke(final_prompt)
     return {"messages":[result]}
